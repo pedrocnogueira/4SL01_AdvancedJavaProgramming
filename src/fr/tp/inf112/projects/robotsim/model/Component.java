@@ -7,7 +7,7 @@ import fr.tp.inf112.projects.canvas.model.Style;
 import fr.tp.inf112.projects.robotsim.model.shapes.PositionedShape;
 import fr.tp.inf112.projects.canvas.model.Shape;
 
-public abstract class Component implements Figure, Serializable {
+public abstract class Component implements Figure, Serializable, Runnable {
 	
 	private static final long serialVersionUID = -5960950869184030220L;
 
@@ -69,6 +69,19 @@ public abstract class Component implements Figure, Serializable {
 	@Override
 	public int getyCoordinate() {
 		return getPositionedShape().getyCoordinate();
+	}
+	
+	@Override public void run() {
+		while(factory.isSimulationStarted()) {
+			this.behave();
+			try {
+				Thread.sleep(50);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		}
 	}
 
 	protected boolean setyCoordinate(final int yCoordinate) {
