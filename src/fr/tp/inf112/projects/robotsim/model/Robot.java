@@ -37,6 +37,8 @@ public class Robot extends Component {
 	private Position blockedTargetPosition;
 	
 	private FactoryPathFinder pathFinder;
+	
+	private Position nextPosition = null;
 
 	public Robot(final Factory factory,
 				 final FactoryPathFinder pathFinder,
@@ -120,10 +122,21 @@ public class Robot extends Component {
 	
 	private int moveToNextPathPosition() {
 		final Motion motion = computeMotion();
-		
-		final int displacement = motion == null ? 0 : motion.moveToTarget();
+
+		int displacement = motion == null ? 0 : motion.moveToTarget();
+
+		if (displacement != 0) {
+			notifyObservers();
+		} else if (isLivelyLocked()) {
+			final Position freeNeighbouringPosition = findFreeNeighbouringPosition(); 
 			
-		notifyObservers();
+			if (freeNeighbouringPosition != null) {             
+				nextPosition = freeNeighbouringPosition;             
+				displacement = moveToNextPathPosition();
+				nextPosition = null;
+				computePathToCurrentTargetComponent();         
+			} 
+		}
 		
 		return displacement;
 	}
@@ -166,6 +179,11 @@ public class Robot extends Component {
 		// If a target position was memorized, it means that the robot was blocked during the last iteration 
 		// so it waited for another robot to pass. So try to move to this memorized position otherwise move to  
 		// the next position from the path
+		
+		if (nextPosition != null) {
+			return nextPosition;
+		}
+		
 		return this.blockedTargetPosition == null ? currentPathPositionsIter.next() : this.blockedTargetPosition;
 	}
 	
@@ -182,6 +200,29 @@ public class Robot extends Component {
 	    }
 	    
 	    return false;
+	}
+	
+	private Position findFreeNeighbouringPosition() {
+		final int resolution = getFactory().getPathResolution();
+				
+		for(int dx = -1; dx < 2; dx++) {
+			for(int dy = -1; dy < 2; dy++) {
+				if (dx == 0 && dy == 0) {
+					continue;
+				}
+				
+				int currX = this.getxCoordinate() + dx * resolution;
+				int currY = this.getyCoordinate() + dy * resolution;
+				
+				RectangularShape currentCandidate = new RectangularShape(currX, currY, resolution, resolution);
+				boolean isBlocked = getFactory().hasMobileComponentAt(currentCandidate, this) || getFactory().hasObstacleAt(currentCandidate);
+				
+				if (!isBlocked) return new Position(currX, currY);
+
+			}
+		}
+		
+		return null;
 	}
 
 	private boolean hasReachedCurrentTarget() {
