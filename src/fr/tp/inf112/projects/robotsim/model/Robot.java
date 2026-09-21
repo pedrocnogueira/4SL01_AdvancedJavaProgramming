@@ -121,11 +121,35 @@ public class Robot extends Component {
 	}
 	
 	private int moveToNextPathPosition() {
-		int displacement;
+		int displacement = 0;
 		
 		synchronized(getFactory()) {
 			final Motion motion = computeMotion();
-			displacement = motion == null ? 0 : motion.moveToTarget();
+			if (motion != null) {
+				final Position target = motion.getTargetPosition();
+				final PositionedShape targetShape = new RectangularShape(target.getxCoordinate(), target.getyCoordinate(), 2, 2);
+				
+				while (getFactory().hasMobileComponentAt(targetShape, this)) {
+					blockedTargetPosition = target;
+					
+					if(isLivelyLocked()) {
+						break;
+					}
+					
+					try {
+						getFactory().wait();
+					} catch (final InterruptedException ex) {
+						Thread.currentThread().interrupt();
+						break;
+					}
+				}
+					
+				if (!getFactory().hasMobileComponentAt(targetShape, this)) {
+					blockedTargetPosition = null;
+	                displacement = motion.moveToTarget();
+	                getFactory().notifyAll(); 
+				}
+			}
 		}
 		
 		if (displacement != 0) {
@@ -144,38 +168,19 @@ public class Robot extends Component {
 		return displacement;
 	}
 	
+	
 	private void computePathToCurrentTargetComponent() {
 		final List<Position> currentPathPositions = pathFinder.findPath(this, currTargetComponent);
 		currentPathPositionsIter = currentPathPositions.iterator();
 	}
 	
 	private Motion computeMotion() {
-		if (!currentPathPositionsIter.hasNext()) {
-
-			// There is no free path to the target
-			blocked = true;
-			
-			return null;
-		}
-		
-		
-		final Position targetPosition = getTargetPosition();
-		final PositionedShape shape = new RectangularShape(targetPosition.getxCoordinate(),
-														   targetPosition.getyCoordinate(),
-				   										   2,
-				   										   2);
-		
-		// If there is another robot, memorize the blocked target position for the next run
-		if (getFactory().hasMobileComponentAt(shape, this)) {
-			this.blockedTargetPosition = targetPosition;
-			
-			return null;
-		}
-
-		// Reset the memorized position
-		this.blockedTargetPosition = null;
-			
-		return new Motion(getPosition(), targetPosition);
+	    if (!currentPathPositionsIter.hasNext()) {
+	        blocked = true;
+	        return null;
+	    }
+	    final Position targetPosition = getTargetPosition();
+	    return new Motion(getPosition(), targetPosition);
 	}
 	
 	private Position getTargetPosition() {
