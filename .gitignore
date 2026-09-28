@@ -8,3 +8,8 @@
 # drop the bundled source tree, javadoc and license folders.
 libs/jgrapht/*
 !libs/jgrapht/lib/
+
+# IntelliJ IDEA (Eclipse project files stay the source of truth)
+.idea/
+*.iml
+/out/
